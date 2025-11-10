@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MatrixplayPONG">
         <activity
-            android:name=".MainActivity"
+            android:name=".Activities.LoginActivity"
             android:screenOrientation="landscape"
             android:exported="true">
             <intent-filter>
@@ -21,6 +21,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Espera de jugadores -->
+        <activity
+            android:name=".Activities.WaitActivity"
+            android:screenOrientation="landscape"
+            android:exported="false" />
+
+        <!-- (opcional) Activity principal del juego -->
+        <activity
+            android:name=".Activities.MainActivity"
+            android:screenOrientation="landscape"
+            android:exported="false" />
     </application>
 
 </manifest>
