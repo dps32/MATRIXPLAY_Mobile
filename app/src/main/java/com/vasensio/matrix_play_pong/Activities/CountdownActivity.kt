@@ -1,3 +1,4 @@
+// CountdownActivity.kt
 package com.vasensio.matrix_play_pong.Activities
 
 import android.content.Intent
@@ -13,7 +14,6 @@ class CountdownActivity : AppCompatActivity() {
     private lateinit var counterText: TextView
     private lateinit var textPlayer1: TextView
     private lateinit var textPlayer2: TextView
-    private var countdownNumber: Int = 3 // default
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,14 +28,12 @@ class CountdownActivity : AppCompatActivity() {
 
         // Registrar listener WS para recibir el número inicial
         MainActivity.wsClient.wsListener = object : WSClient.WSListener {
-            override fun onConnectionEstablished() {
-            }
-
-            override fun onTwoPlayersReady() {
-            }
-
+            override fun onConnectionEstablished() {}
+            override fun onTwoPlayersReady() {}
             override fun onCountdownStart(startNumber: Int) {
-                startCountdown(startNumber)
+                runOnUiThread { // Asegura actualizar UI en hilo principal
+                    startCountdown(startNumber)
+                }
             }
         }
     }
@@ -46,7 +44,7 @@ class CountdownActivity : AppCompatActivity() {
 
         object : CountDownTimer(totalMillis, interval) {
             override fun onTick(millisUntilFinished: Long) {
-                val secondsLeft = (millisUntilFinished / 1000 + 1).toInt()
+                val secondsLeft = (millisUntilFinished / 1000).toInt() + 1
                 counterText.text = secondsLeft.toString()
             }
 
