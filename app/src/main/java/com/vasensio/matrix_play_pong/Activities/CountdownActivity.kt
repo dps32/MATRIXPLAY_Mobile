@@ -1,22 +1,61 @@
 package com.vasensio.matrix_play_pong.Activities
 
+import android.content.Intent
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
+import android.os.CountDownTimer
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.vasensio.matrix_play_pong.R
+import com.vasensio.matrix_play_pong.classes.WSClient
 
-class CountdownActivity :AppCompatActivity() {
+class CountdownActivity : AppCompatActivity() {
+
+    private lateinit var counterText: TextView
+    private lateinit var textPlayer1: TextView
+    private lateinit var textPlayer2: TextView
+    private var countdownNumber: Int = 3 // default
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_countdown)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.activity_countdown)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+
+        counterText = findViewById(R.id.counterText)
+        textPlayer1 = findViewById(R.id.textPlayer1)
+        textPlayer2 = findViewById(R.id.textPlayer2)
+
+        textPlayer1.text = MainActivity.playerName
+        textPlayer2.text = MainActivity.opponentName
+
+        // Registrar listener WS para recibir el número inicial
+        MainActivity.wsClient.wsListener = object : WSClient.WSListener {
+            override fun onConnectionEstablished() {
+            }
+
+            override fun onTwoPlayersReady() {
+            }
+
+            override fun onCountdownStart(startNumber: Int) {
+                startCountdown(startNumber)
+            }
         }
+    }
+
+    private fun startCountdown(number: Int) {
+        val totalMillis = (number * 1000).toLong()
+        val interval = 1000L
+
+        object : CountDownTimer(totalMillis, interval) {
+            override fun onTick(millisUntilFinished: Long) {
+                val secondsLeft = (millisUntilFinished / 1000 + 1).toInt()
+                counterText.text = secondsLeft.toString()
+            }
+
+            override fun onFinish() {
+                // Iniciar PlayActivity al finalizar el conteo
+                val intent = Intent(this@CountdownActivity, PlayActivity::class.java)
+                startActivity(intent)
+                finish()
+            }
+        }.start()
     }
 }

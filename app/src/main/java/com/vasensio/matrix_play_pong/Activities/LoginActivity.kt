@@ -9,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.textfield.TextInputEditText
-import com.vasensio.matrix_play_pong.PongApplication
 import com.vasensio.matrix_play_pong.R
 import java.net.URI
 
@@ -51,11 +50,8 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun setDefaultConfiguration() {
-        // Configuración por defecto para desarrollo local (emulador Android)
-        urlInput.setText("ws://10.0.2.2:3000")
-
-        // Si quieres usar Proxmox por defecto, descomentar:
-        // urlInput.setText("wss://vasensiobermudez.ieti.site:443")
+        // Configuración por defecto: servidor indicado por el usuario
+        urlInput.setText("wss://matrixplay1.ieti.site:443")
     }
 
     private fun connectToServer() {
@@ -85,10 +81,10 @@ class LoginActivity : AppCompatActivity() {
             val uri = URI(url)
 
             // Guardar nombre del jugador
-            PongApplication.playerName = playerName
+            MainActivity.playerName = playerName
 
             // Conectar al WebSocket usando la URI completa
-            val connectionResult = PongApplication.connectWS(uri)
+            val connectionResult = MainActivity.connectWS(uri)
 
             if (connectionResult) {
                 Toast.makeText(this, "Connecting to server...", Toast.LENGTH_SHORT).show()

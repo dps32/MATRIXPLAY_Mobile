@@ -1,7 +1,7 @@
 package com.vasensio.matrix_play_pong.classes
 
 import android.util.Log
-import com.vasensio.matrix_play_pong.PongApplication
+import com.vasensio.matrix_play_pong.Activities.MainActivity
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import org.json.JSONObject
@@ -9,6 +9,15 @@ import java.lang.Exception
 import java.net.URI
 
 class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
+
+    // Listener para comunicar eventos a las actividades
+    interface WSListener {
+        fun onConnectionEstablished()
+        fun onTwoPlayersReady()
+        fun onCountdownStart(startNumber: Int)
+    }
+
+    var wsListener: WSListener? = null
 
     override fun onOpen(handshakedata: ServerHandshake?) {
         Log.d("WSConnection", "[*] Opened Connection!")
@@ -45,9 +54,8 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
                 KeyValues.K_WELCOME.value -> {
                     val message = msgObj.optString(KeyValues.K_MESSAGE.value, "")
                     Log.d("WSConnection", "[*] Welcome message: $message")
-
-                    // Notificar que la conexión fue exitosa
-                    PongApplication.onConnectionEstablished()
+                    wsListener?.onConnectionEstablished()
+                    MainActivity.onConnectionEstablished()
                 }
 
                 KeyValues.K_URL.value -> {
@@ -55,10 +63,24 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
                     Log.d("WSConnection", "[*] Server URL: $serverUrl")
                 }
 
+                KeyValues.K_PLAYERS_READY.value -> {
+                    val opponent = msgObj.optString("opponentName", "PLAYER 2")
+                    MainActivity.opponentName = opponent
+                    Log.d("WSConnection", "[*] Two players ready! Opponent: $opponent")
+                    wsListener?.onTwoPlayersReady()
+                }
+
+                KeyValues.K_COUNTDOWN.value -> {
+                    val startNumber = msgObj.optInt("number", 3)
+                    Log.d("WSConnection", "[*] Countdown start number: $startNumber")
+                    wsListener?.onCountdownStart(startNumber)
+                }
+
                 else -> {
                     Log.d("WSConnection", "[*] Unknown message type: $type")
                 }
             }
+
         } catch (e: Exception) {
             Log.e("WSConnection", "[*] Error parsing message: ${e.message}")
         }

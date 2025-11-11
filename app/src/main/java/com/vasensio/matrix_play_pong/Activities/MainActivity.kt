@@ -16,6 +16,9 @@ class MainActivity : AppCompatActivity() {
         // Datos del jugador
         var playerName: String = ""
 
+        // Nombre del oponente
+        var opponentName: String = ""
+
         // Referencia a la actividad actual
         var currentActivityRef: Activity? = null
 
