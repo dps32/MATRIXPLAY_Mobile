@@ -3,18 +3,22 @@ package com.vasensio.matrix_play_pong.Activities
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.textfield.TextInputEditText
+import com.vasensio.matrix_play_pong.PongApplication
 import com.vasensio.matrix_play_pong.R
+import java.net.URI
 
-class LoginActivity : AppCompatActivity(){
+class LoginActivity : AppCompatActivity() {
 
-    private lateinit var btnConnect : Button
-    private lateinit var playerNameInput : TextInputEditText
-    private lateinit var urlInput : TextInputEditText
+    private lateinit var btnConnect: Button
+    private lateinit var btnAvatar: Button
+    private lateinit var playerNameInput: TextInputEditText
+    private lateinit var urlInput: TextInputEditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,20 +30,79 @@ class LoginActivity : AppCompatActivity(){
             insets
         }
 
-        btnConnect = findViewById<Button>(R.id.buttonConnectionConnect)
-        playerNameInput = findViewById<TextInputEditText>(R.id.playerNameInputText)
-        urlInput = findViewById<TextInputEditText>(R.id.urlInputText)
+        // Inicializar vistas
+        btnConnect = findViewById(R.id.buttonConnectionConnect)
+        btnAvatar = findViewById(R.id.button2)
+        playerNameInput = findViewById(R.id.playerNameInputText)
+        urlInput = findViewById(R.id.urlInputText)
 
+        // Configurar URL por defecto
+        setDefaultConfiguration()
+
+        // Configurar listeners
         btnConnect.setOnClickListener {
             connectToServer()
         }
-    }
-    private fun connectToServer() {
-        //var name : String = playerNameInput.text.toString()
-        //var url : String = urlInput.text.toString()
 
-        val intent = Intent(this, WaitActivity::class.java)
-        startActivity(intent)
-        //finish()
+        btnAvatar.setOnClickListener {
+            // TODO: Implementar selección de avatar
+            Toast.makeText(this, "Avatar selection coming soon!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setDefaultConfiguration() {
+        // Configuración por defecto para desarrollo local (emulador Android)
+        urlInput.setText("ws://10.0.2.2:3000")
+
+        // Si quieres usar Proxmox por defecto, descomentar:
+        // urlInput.setText("wss://vasensiobermudez.ieti.site:443")
+    }
+
+    private fun connectToServer() {
+        val playerName = playerNameInput.text.toString().trim()
+        val url = urlInput.text.toString().trim()
+
+        // Validar nombre del jugador
+        if (playerName.isEmpty()) {
+            Toast.makeText(this, "Please enter a player name!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Validar URL
+        if (url.isEmpty()) {
+            Toast.makeText(this, "Please enter a server URL!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Validar formato de URL
+        if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
+            Toast.makeText(this, "URL must start with ws:// or wss://", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        try {
+            // Validar que la URI es válida
+            val uri = URI(url)
+
+            // Guardar nombre del jugador
+            PongApplication.playerName = playerName
+
+            // Conectar al WebSocket usando la URI completa
+            val connectionResult = PongApplication.connectWS(uri)
+
+            if (connectionResult) {
+                Toast.makeText(this, "Connecting to server...", Toast.LENGTH_SHORT).show()
+
+                // Pasar a la siguiente actividad
+                val intent = Intent(this, WaitActivity::class.java)
+                startActivity(intent)
+                finish()
+            } else {
+                Toast.makeText(this, "Failed to connect to server", Toast.LENGTH_SHORT).show()
+            }
+
+        } catch (e: Exception) {
+            Toast.makeText(this, "Invalid URL format: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 }
