@@ -42,21 +42,25 @@ class CountdownActivity : AppCompatActivity() {
         }
     }
 
-    private fun startCountdown(number: Int) {
-        val totalMillis = (number * 1000).toLong()
-        val interval = 1000L
+    private fun startCountdown(startNumber: Int) {
+        counterText.text = startNumber.toString() // Mostrar número inicial
 
-        object : CountDownTimer(totalMillis, interval) {
+        object : CountDownTimer((startNumber * 1000L) + 500, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                val secondsLeft = (millisUntilFinished / 1000).toInt() + 1
-                counterText.text = secondsLeft.toString()
+                val secondsLeft = ((millisUntilFinished / 1000).toInt())
+                if (secondsLeft > 0) {
+                    counterText.text = secondsLeft.toString()
+                }
             }
 
             override fun onFinish() {
-                // Iniciar PlayActivity al finalizar el conteo
-                val intent = Intent(this@CountdownActivity, PlayActivity::class.java)
-                startActivity(intent)
-                finish()
+                counterText.text = "GO!"
+                // Pequeño delay para que el usuario vea "GO!"
+                counterText.postDelayed({
+                    val intent = Intent(this@CountdownActivity, PlayActivity::class.java)
+                    startActivity(intent)
+                    finish()
+                }, 500)
             }
         }.start()
     }

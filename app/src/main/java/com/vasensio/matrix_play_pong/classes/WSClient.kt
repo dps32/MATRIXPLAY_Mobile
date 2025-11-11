@@ -1,6 +1,8 @@
 package com.vasensio.matrix_play_pong.classes
 
+import android.content.Intent
 import android.util.Log
+import com.vasensio.matrix_play_pong.Activities.CountdownActivity
 import com.vasensio.matrix_play_pong.Activities.MainActivity
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
@@ -66,7 +68,13 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
                 KeyValues.K_PLAYERS_READY.value -> {
                     val opponent = msgObj.optString("opponentName", "PLAYER2")
                     MainActivity.opponentName = opponent
-                    wsListener?.onTwoPlayersReady()
+
+                    MainActivity.currentActivityRef?.runOnUiThread {
+                        // Abrir CountdownActivity cuando ambos jugadores estén listos
+                        val intent =
+                            Intent(MainActivity.currentActivityRef, CountdownActivity::class.java)
+                        MainActivity.currentActivityRef?.startActivity(intent)
+                    }
                 }
 
                 KeyValues.K_COUNTDOWN.value -> {
