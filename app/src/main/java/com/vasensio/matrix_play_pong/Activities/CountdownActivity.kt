@@ -29,7 +29,11 @@ class CountdownActivity : AppCompatActivity() {
         // Registrar listener WS para recibir el número inicial
         MainActivity.wsClient.wsListener = object : WSClient.WSListener {
             override fun onConnectionEstablished() {}
-            override fun onTwoPlayersReady() {}
+            override fun onTwoPlayersReady() {
+                runOnUiThread {
+                textPlayer2.text = MainActivity.opponentName
+                }
+            }
             override fun onCountdownStart(startNumber: Int) {
                 runOnUiThread { // Asegura actualizar UI en hilo principal
                     startCountdown(startNumber)

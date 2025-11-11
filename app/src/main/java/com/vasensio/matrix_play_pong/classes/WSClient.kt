@@ -64,9 +64,8 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
                 }
 
                 KeyValues.K_PLAYERS_READY.value -> {
-                    val opponent = msgObj.optString("opponentName", "PLAYER 2")
+                    val opponent = msgObj.optString("opponentName", "PLAYER2")
                     MainActivity.opponentName = opponent
-                    Log.d("WSConnection", "[*] Two players ready! Opponent: $opponent")
                     wsListener?.onTwoPlayersReady()
                 }
 
