@@ -44,7 +44,6 @@ class LoginActivity : AppCompatActivity() {
         }
 
         btnAvatar.setOnClickListener {
-            // TODO: Implementar selección de avatar
             Toast.makeText(this, "Avatar selection coming soon!", Toast.LENGTH_SHORT).show()
         }
     }

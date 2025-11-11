@@ -68,14 +68,17 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
                 KeyValues.K_PLAYERS_READY.value -> {
                     val opponent = msgObj.optString("opponentName", "PLAYER2")
                     MainActivity.opponentName = opponent
+                    Log.d("WSConnection", "[*] Opponent ready: $opponent")
 
+                    // Abrir CountdownActivity solo si aún estamos en WaitActivity
                     MainActivity.currentActivityRef?.runOnUiThread {
-                        // Abrir CountdownActivity cuando ambos jugadores estén listos
-                        val intent =
-                            Intent(MainActivity.currentActivityRef, CountdownActivity::class.java)
+                        val intent = Intent(MainActivity.currentActivityRef, CountdownActivity::class.java)
                         MainActivity.currentActivityRef?.startActivity(intent)
                     }
+
+                    wsListener?.onTwoPlayersReady() // Opcional si quieres actualizar UI dinámica
                 }
+
 
                 KeyValues.K_COUNTDOWN.value -> {
                     val startNumber = msgObj.optInt("number", 3)

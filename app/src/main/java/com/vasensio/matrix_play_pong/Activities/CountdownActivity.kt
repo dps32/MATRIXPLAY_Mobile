@@ -23,45 +23,40 @@ class CountdownActivity : AppCompatActivity() {
         textPlayer1 = findViewById(R.id.textPlayer1)
         textPlayer2 = findViewById(R.id.textPlayer2)
 
+        // Asignar nombres
         textPlayer1.text = MainActivity.playerName
         textPlayer2.text = MainActivity.opponentName
 
-        // Registrar listener WS para recibir el número inicial
+        // Registrar listener WS para recibir countdown
         MainActivity.wsClient.wsListener = object : WSClient.WSListener {
             override fun onConnectionEstablished() {}
-            override fun onTwoPlayersReady() {
-                runOnUiThread {
-                textPlayer2.text = MainActivity.opponentName
-                }
-            }
+            override fun onTwoPlayersReady() {}
             override fun onCountdownStart(startNumber: Int) {
-                runOnUiThread { // Asegura actualizar UI en hilo principal
+                runOnUiThread {
                     startCountdown(startNumber)
                 }
             }
         }
     }
 
+
     private fun startCountdown(startNumber: Int) {
-        counterText.text = startNumber.toString() // Mostrar número inicial
+        counterText.text = startNumber.toString()
 
         object : CountDownTimer((startNumber * 1000L) + 500, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                val secondsLeft = ((millisUntilFinished / 1000).toInt())
-                if (secondsLeft > 0) {
-                    counterText.text = secondsLeft.toString()
-                }
+                val secondsLeft = (millisUntilFinished / 1000).toInt()
+                if (secondsLeft > 0) counterText.text = secondsLeft.toString()
             }
 
             override fun onFinish() {
                 counterText.text = "GO!"
-                // Pequeño delay para que el usuario vea "GO!"
                 counterText.postDelayed({
-                    val intent = Intent(this@CountdownActivity, PlayActivity::class.java)
-                    startActivity(intent)
+                    startActivity(Intent(this@CountdownActivity, PlayActivity::class.java))
                     finish()
                 }, 500)
             }
         }.start()
     }
+
 }
