@@ -42,6 +42,12 @@
             android:name=".Activities.CountdownActivity"
             android:screenOrientation="landscape"
             android:exported="false" />
+
+        <!-- PlayActivity - Pantalla del juego -->
+        <activity
+            android:name=".Activities.PlayActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
     </application>
 
 </manifest>
