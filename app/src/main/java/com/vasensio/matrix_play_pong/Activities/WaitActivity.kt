@@ -13,6 +13,7 @@ import com.vasensio.matrix_play_pong.classes.WSClient
 class WaitActivity : AppCompatActivity() {
 
     private lateinit var textViewStatus: TextView
+    private var hasNavigated = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,26 +25,63 @@ class WaitActivity : AppCompatActivity() {
         }
 
         textViewStatus = findViewById(R.id.textView4)
-        textViewStatus.text = "WAITING PLAYERS"
+        textViewStatus.text = "WAITING FOR PLAYERS..."
+
+        // Actualizar referencia de actividad actual
+        MainActivity.currentActivityRef = this
 
         // Registrar listener en WSClient
         MainActivity.wsClient.wsListener = object : WSClient.WSListener {
             override fun onConnectionEstablished() {
                 Log.d("WaitActivity", "[*] Connection established")
+                runOnUiThread {
+                    textViewStatus.text = "CONNECTED - WAITING FOR PLAYERS..."
+                }
             }
 
             override fun onTwoPlayersReady() {
-                runOnUiThread {
-                    Log.d("WaitActivity", "[*] Two players ready, moving to CountdownActivity")
-                    val intent = Intent(this@WaitActivity, CountdownActivity::class.java)
-                    startActivity(intent)
-                    finish()
+                // Solo navegamos una vez
+                if (!hasNavigated) {
+                    hasNavigated = true
+                    runOnUiThread {
+                        Log.d("WaitActivity", "[*] Players ready, moving to CountdownActivity")
+                        textViewStatus.text = "PLAYERS READY!"
+
+                        // Pequeño delay para que el usuario vea el mensaje
+                        textViewStatus.postDelayed({
+                            val intent = Intent(this@WaitActivity, CountdownActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        }, 500)
+                    }
                 }
             }
 
             override fun onCountdownStart(startNumber: Int) {
-                // WaitActivity no hace nada con el countdown
+                // WaitActivity no maneja el countdown directamente
+                // Esto será manejado por CountdownActivity
+                Log.d("WaitActivity", "[*] Countdown signal received: $startNumber")
             }
+        }
+
+        // Opcional: Solicitar info del servidor
+        try {
+            MainActivity.wsClient.requestGroupName()
+        } catch (e: Exception) {
+            Log.e("WaitActivity", "[*] Error requesting group name: ${e.message}")
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        MainActivity.currentActivityRef = this
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Limpiar listener si la actividad se destruye
+        if (MainActivity.currentActivityRef == this) {
+            MainActivity.currentActivityRef = null
         }
     }
 }

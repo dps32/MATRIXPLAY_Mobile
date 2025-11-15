@@ -1,8 +1,6 @@
 package com.vasensio.matrix_play_pong.classes
 
-import android.content.Intent
 import android.util.Log
-import com.vasensio.matrix_play_pong.Activities.CountdownActivity
 import com.vasensio.matrix_play_pong.Activities.MainActivity
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
@@ -20,15 +18,13 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
     }
 
     var wsListener: WSListener? = null
+    private var welcomeCount = 0
+    private var savedCountdownNumber: Int? = null
 
     override fun onOpen(handshakedata: ServerHandshake?) {
         Log.d("WSConnection", "[*] Opened Connection!")
 
-        // Enviar mensaje inicial si es necesario
-        val msgObject = JSONObject()
-        msgObject.put(KeyValues.K_TYPE.value, KeyValues.K_URL.value)
-        send(msgObject.toString())
-        Log.d("WSConnection", "[*] Message to server: $msgObject")
+        // No enviamos nada inicialmente, esperamos el welcome del servidor
     }
 
     override fun onMessage(message: String?) {
@@ -56,8 +52,21 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
                 KeyValues.K_WELCOME.value -> {
                     val message = msgObj.optString(KeyValues.K_MESSAGE.value, "")
                     Log.d("WSConnection", "[*] Welcome message: $message")
-                    wsListener?.onConnectionEstablished()
-                    MainActivity.onConnectionEstablished()
+
+                    welcomeCount++
+
+                    // La primera vez que recibimos welcome, notificamos la conexión
+                    if (welcomeCount == 1) {
+                        wsListener?.onConnectionEstablished()
+                        MainActivity.onConnectionEstablished()
+                    }
+
+                    // Si recibimos 2 welcomes seguidos, significa que hay 2 jugadores
+                    // (el servidor envía welcome a todos cuando alguien se conecta)
+                    if (welcomeCount >= 2) {
+                        Log.d("WSConnection", "[*] Two players detected via welcome messages")
+                        // No hacemos nada aquí, esperamos el countdown
+                    }
                 }
 
                 KeyValues.K_URL.value -> {
@@ -65,25 +74,28 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
                     Log.d("WSConnection", "[*] Server URL: $serverUrl")
                 }
 
-                KeyValues.K_PLAYERS_READY.value -> {
-                    val opponent = msgObj.optString("opponentName", "PLAYER2")
-                    MainActivity.opponentName = opponent
-                    Log.d("WSConnection", "[*] Opponent ready: $opponent")
-
-                    // Abrir CountdownActivity solo si aún estamos en WaitActivity
-                    MainActivity.currentActivityRef?.runOnUiThread {
-                        val intent = Intent(MainActivity.currentActivityRef, CountdownActivity::class.java)
-                        MainActivity.currentActivityRef?.startActivity(intent)
-                    }
-
-                    wsListener?.onTwoPlayersReady() // Opcional si quieres actualizar UI dinámica
+                KeyValues.K_GROUPNAME.value -> {
+                    val groupName = msgObj.optString(KeyValues.K_MESSAGE.value, "")
+                    Log.d("WSConnection", "[*] Group name: $groupName")
                 }
 
-
                 KeyValues.K_COUNTDOWN.value -> {
-                    val startNumber = msgObj.optInt("number", 3)
+                    val startNumber = msgObj.optInt(KeyValues.K_NUMBER.value, 3)
                     Log.d("WSConnection", "[*] Countdown start number: $startNumber")
+
+                    // Guardar el número para CountdownActivity
+                    savedCountdownNumber = startNumber
+
+                    // Cuando recibimos countdown, significa que hay 3 jugadores listos
+                    wsListener?.onTwoPlayersReady()
+
+                    // Iniciar el countdown
                     wsListener?.onCountdownStart(startNumber)
+                }
+
+                "error" -> {
+                    val errorMsg = msgObj.optString(KeyValues.K_MESSAGE.value, "Unknown error")
+                    Log.e("WSConnection", "[*] Server error: $errorMsg")
                 }
 
                 else -> {
@@ -93,6 +105,42 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
 
         } catch (e: Exception) {
             Log.e("WSConnection", "[*] Error parsing message: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Obtener el número guardado del countdown
+     */
+    fun getSavedCountdownNumber(): Int? {
+        return savedCountdownNumber
+    }
+
+    /**
+     * Solicitar la URL del servidor
+     */
+    fun requestServerUrl() {
+        try {
+            val msgObject = JSONObject()
+            msgObject.put(KeyValues.K_TYPE.value, KeyValues.K_URL.value)
+            send(msgObject.toString())
+            Log.d("WSConnection", "[*] Requested server URL")
+        } catch (e: Exception) {
+            Log.e("WSConnection", "[*] Error requesting server URL: ${e.message}")
+        }
+    }
+
+    /**
+     * Solicitar el nombre del grupo
+     */
+    fun requestGroupName() {
+        try {
+            val msgObject = JSONObject()
+            msgObject.put(KeyValues.K_TYPE.value, KeyValues.K_GROUPNAME.value)
+            send(msgObject.toString())
+            Log.d("WSConnection", "[*] Requested group name")
+        } catch (e: Exception) {
+            Log.e("WSConnection", "[*] Error requesting group name: ${e.message}")
         }
     }
 }

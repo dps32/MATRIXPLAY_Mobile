@@ -2,6 +2,9 @@ package com.vasensio.matrix_play_pong.Activities
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -49,8 +52,11 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun setDefaultConfiguration() {
-        // Configuración por defecto: servidor indicado por el usuario
+        // Configuración por defecto: servidor proporcionado
         urlInput.setText("wss://matrixplay1.ieti.site:443")
+
+        // Nombre de ejemplo (opcional)
+        // playerNameInput.setText("Player1")
     }
 
     private fun connectToServer() {
@@ -60,44 +66,88 @@ class LoginActivity : AppCompatActivity() {
         // Validar nombre del jugador
         if (playerName.isEmpty()) {
             Toast.makeText(this, "Please enter a player name!", Toast.LENGTH_SHORT).show()
+            playerNameInput.requestFocus()
+            return
+        }
+
+        // Validar longitud del nombre
+        if (playerName.length < 2) {
+            Toast.makeText(this, "Player name must be at least 2 characters", Toast.LENGTH_SHORT).show()
+            playerNameInput.requestFocus()
             return
         }
 
         // Validar URL
         if (url.isEmpty()) {
             Toast.makeText(this, "Please enter a server URL!", Toast.LENGTH_SHORT).show()
+            urlInput.requestFocus()
             return
         }
 
         // Validar formato de URL
         if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
             Toast.makeText(this, "URL must start with ws:// or wss://", Toast.LENGTH_SHORT).show()
+            urlInput.requestFocus()
             return
         }
+
+        // Deshabilitar botón para evitar múltiples conexiones
+        btnConnect.isEnabled = false
+        btnConnect.text = "Connecting..."
 
         try {
             // Validar que la URI es válida
             val uri = URI(url)
+            Log.d("LoginActivity", "[*] Attempting connection to: $uri")
 
             // Guardar nombre del jugador
             MainActivity.playerName = playerName
+            Log.d("LoginActivity", "[*] Player name set to: $playerName")
 
             // Conectar al WebSocket usando la URI completa
             val connectionResult = MainActivity.connectWS(uri)
 
             if (connectionResult) {
                 Toast.makeText(this, "Connecting to server...", Toast.LENGTH_SHORT).show()
+                Log.d("LoginActivity", "[*] Connection initiated successfully")
 
-                // Pasar a la siguiente actividad
-                val intent = Intent(this, WaitActivity::class.java)
-                startActivity(intent)
-                finish()
+                // Esperar un momento para que la conexión se establezca
+                Handler(Looper.getMainLooper()).postDelayed({
+                    // Verificar si la conexión se estableció
+                    if (MainActivity.isConnectedToServer()) {
+                        Log.d("LoginActivity", "[*] Connection confirmed, moving to WaitActivity")
+                        // Pasar a la siguiente actividad
+                        val intent = Intent(this, WaitActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        Log.d("LoginActivity", "[*] Connection still pending, moving to WaitActivity anyway")
+                        // Incluso si no está confirmado, pasamos a WaitActivity
+                        // El listener se activará cuando se conecte
+                        val intent = Intent(this, WaitActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    }
+                }, 1000) // Esperar 1 segundo
+
             } else {
-                Toast.makeText(this, "Failed to connect to server", Toast.LENGTH_SHORT).show()
+                Log.e("LoginActivity", "[*] Failed to initiate connection")
+                Toast.makeText(this, "Failed to connect to server", Toast.LENGTH_LONG).show()
+                btnConnect.isEnabled = true
+                btnConnect.text = "Connect"
             }
 
         } catch (e: Exception) {
-            Toast.makeText(this, "Invalid URL format: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e("LoginActivity", "[*] Connection error: ${e.message}")
+            e.printStackTrace()
+            Toast.makeText(this, "Invalid URL format: ${e.message}", Toast.LENGTH_LONG).show()
+            btnConnect.isEnabled = true
+            btnConnect.text = "Connect"
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // No desconectar aquí, dejamos que MainActivity lo maneje
     }
 }

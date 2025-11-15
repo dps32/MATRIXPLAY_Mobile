@@ -17,7 +17,7 @@ class MainActivity : AppCompatActivity() {
         var playerName: String = ""
 
         // Nombre del oponente
-        var opponentName: String = ""
+        var opponentName: String = "PLAYER 2"
 
         // Referencia a la actividad actual
         var currentActivityRef: Activity? = null
@@ -27,15 +27,22 @@ class MainActivity : AppCompatActivity() {
 
         /**
          * Conectar al servidor WebSocket usando URI completa
-         * @param uri URI completa del servidor (ej: ws://10.0.2.2:3000)
+         * @param uri URI completa del servidor (ej: wss://matrixplay1.ieti.site:443)
          */
         fun connectWS(uri: URI): Boolean {
             return try {
                 Log.d("WSConnection", "[*] Connecting to: $uri")
 
+                // Crear cliente WebSocket
                 wsClient = WSClient(uri)
+
+                // Configurar timeout de conexión
+                wsClient.connectionLostTimeout = 30
+
+                // Conectar
                 wsClient.connect()
 
+                Log.d("WSConnection", "[*] Connection initiated")
                 true
             } catch (e: Exception) {
                 Log.e("WSConnection", "[*] Connection error: ${e.message}")
@@ -74,7 +81,7 @@ class MainActivity : AppCompatActivity() {
          */
         fun disconnectWS() {
             try {
-                if (::wsClient.isInitialized) {
+                if (::wsClient.isInitialized && wsClient.isOpen) {
                     wsClient.close()
                     isConnected = false
                     Log.d("WSConnection", "[*] Disconnected from server")
@@ -83,15 +90,29 @@ class MainActivity : AppCompatActivity() {
                 Log.e("WSConnection", "[*] Error disconnecting: ${e.message}")
             }
         }
+
+        /**
+         * Verificar si está conectado
+         */
+        fun isConnectedToServer(): Boolean {
+            return try {
+                ::wsClient.isInitialized && wsClient.isOpen && isConnected
+            } catch (e: Exception) {
+                false
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         currentActivityRef = this
+
+        Log.d("MainActivity", "[*] MainActivity created")
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        disconnectWS()
+        // Solo desconectar si esta es la última actividad
+        Log.d("MainActivity", "[*] MainActivity destroyed")
     }
 }
