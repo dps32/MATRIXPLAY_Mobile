@@ -26,7 +26,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Espera de jugadores -->
+        <!-- Activity espera de jugadores -->
         <activity
             android:name=".Activities.WaitActivity"
             android:screenOrientation="landscape"
@@ -38,16 +38,17 @@
             android:screenOrientation="landscape"
             android:exported="false" />
 
+        <!--Activity countdown del juego -->
         <activity
             android:name=".Activities.CountdownActivity"
             android:screenOrientation="landscape"
             android:exported="false" />
 
-        <!-- PlayActivity - Pantalla del juego -->
+        <!-- Activity Pantalla del juego -->
         <activity
             android:name=".Activities.PlayActivity"
-            android:exported="false"
-            android:screenOrientation="landscape" />
+            android:screenOrientation="landscape"
+            android:exported="false"/>
     </application>
 
 </manifest>
