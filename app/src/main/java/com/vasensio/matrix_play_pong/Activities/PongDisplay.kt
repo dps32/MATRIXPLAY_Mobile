@@ -39,19 +39,15 @@ class PongDisplay @JvmOverloads constructor(
     private val paddleHeight = 150f
 
     // Dimensiones de la pelota
-    private val ballRadius = 15f
+    private val ballRadius = 20f
 
-    // Posiciones de las palas (0-100, donde 50 es el centro)
+    // Posiciones de las palas (0-100)
     private var leftPaddlePosition = 50f
     private var rightPaddlePosition = 50f
 
     // Posición de la pelota
     private var ballX = 0f
     private var ballY = 0f
-
-    // Velocidad de la pelota
-    private var ballVelocityX = 8f
-    private var ballVelocityY = 5f
 
     // Estado del juego
     private var isGameRunning = false
@@ -60,13 +56,6 @@ class PongDisplay @JvmOverloads constructor(
         // Inicializar posición de la pelota en el centro
         ballX = width / 2f
         ballY = height / 2f
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        // Actualizar posición inicial de la pelota cuando cambie el tamaño
-        ballX = w / 2f
-        ballY = h / 2f
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -89,7 +78,6 @@ class PongDisplay @JvmOverloads constructor(
 
         // Si el juego está corriendo, actualizar posición de la pelota
         if (isGameRunning) {
-            updateBallPosition()
             invalidate() // Redibujar continuamente
         }
     }
@@ -157,51 +145,6 @@ class PongDisplay @JvmOverloads constructor(
     }
 
     /**
-     * Actualiza la posición de la pelota y detecta colisiones
-     */
-    private fun updateBallPosition() {
-        // Mover la pelota
-        ballX += ballVelocityX
-        ballY += ballVelocityY
-
-        // Colisión con bordes superior e inferior
-        if (ballY - ballRadius <= 0 || ballY + ballRadius >= height) {
-            ballVelocityY = -ballVelocityY
-        }
-
-        // Colisión con pala izquierda
-        val leftPaddleY = calculatePaddleY(leftPaddlePosition)
-        if (ballX - ballRadius <= 30f + paddleWidth &&
-            ballY >= leftPaddleY - (paddleHeight / 2) &&
-            ballY <= leftPaddleY + (paddleHeight / 2)) {
-            ballVelocityX = Math.abs(ballVelocityX) // Rebote hacia la derecha
-        }
-
-        // Colisión con pala derecha
-        val rightPaddleY = calculatePaddleY(rightPaddlePosition)
-        if (ballX + ballRadius >= width - 30f - paddleWidth &&
-            ballY >= rightPaddleY - (paddleHeight / 2) &&
-            ballY <= rightPaddleY + (paddleHeight / 2)) {
-            ballVelocityX = -Math.abs(ballVelocityX) // Rebote hacia la izquierda
-        }
-
-        // Si la pelota sale por los lados, reiniciar
-        if (ballX < 0 || ballX > width) {
-            resetBall()
-        }
-    }
-
-    /**
-     * Reinicia la pelota al centro
-     */
-    private fun resetBall() {
-        ballX = width / 2f
-        ballY = height / 2f
-        ballVelocityX = if (ballVelocityX > 0) 8f else -8f
-        ballVelocityY = 5f
-    }
-
-    /**
      * Actualiza la posición de la pala izquierda (0-100)
      */
     fun setLeftPaddlePosition(position: Int) {
@@ -218,20 +161,10 @@ class PongDisplay @JvmOverloads constructor(
     }
 
     /**
-     * Actualiza la posición de la pelota desde el servidor
-     */
-    fun updateBallPosition(x: Float, y: Float) {
-        ballX = x
-        ballY = y
-        invalidate()
-    }
-
-    /**
      * Inicia el juego (animación de la pelota)
      */
     fun startGame() {
         isGameRunning = true
-        resetBall()
         invalidate()
     }
 
@@ -248,7 +181,6 @@ class PongDisplay @JvmOverloads constructor(
     fun resetGame() {
         leftPaddlePosition = 50f
         rightPaddlePosition = 50f
-        resetBall()
         invalidate()
     }
 }

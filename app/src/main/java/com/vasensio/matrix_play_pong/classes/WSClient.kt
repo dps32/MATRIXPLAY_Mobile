@@ -15,6 +15,7 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
         fun onConnectionEstablished()
         fun onTwoPlayersReady()
         fun onCountdownStart(startNumber: Int)
+        fun onMessageReceived(message: String) // Nuevo método para todos los mensajes
     }
 
     var wsListener: WSListener? = null
@@ -23,12 +24,13 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
 
     override fun onOpen(handshakedata: ServerHandshake?) {
         Log.d("WSConnection", "[*] Opened Connection!")
-
         // No enviamos nada inicialmente, esperamos el welcome del servidor
     }
 
     override fun onMessage(message: String?) {
         if (message != null) {
+            // Notificar el mensaje completo al listener
+            wsListener?.onMessageReceived(message)
             wsMessage(message)
         }
     }
@@ -62,10 +64,8 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
                     }
 
                     // Si recibimos 2 welcomes seguidos, significa que hay 2 jugadores
-                    // (el servidor envía welcome a todos cuando alguien se conecta)
                     if (welcomeCount >= 2) {
                         Log.d("WSConnection", "[*] Two players detected via welcome messages")
-                        // No hacemos nada aquí, esperamos el countdown
                     }
                 }
 
@@ -91,6 +91,18 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
 
                     // Iniciar el countdown
                     wsListener?.onCountdownStart(startNumber)
+                }
+
+                "player_assignment" -> {
+                    val playerId = msgObj.optInt("player_id", 0)
+                    val message = msgObj.optString(KeyValues.K_MESSAGE.value, "")
+                    Log.d("WSConnection", "[*] Player assignment: Player $playerId - $message")
+                }
+
+                "paddle_update" -> {
+                    val playerId = msgObj.optInt("player_id", 0)
+                    val position = msgObj.optInt("position", 50)
+                    Log.d("WSConnection", "[*] Paddle update: Player $playerId at position $position")
                 }
 
                 "error" -> {
@@ -141,6 +153,22 @@ class WSClient(serverUri: URI) : WebSocketClient(serverUri) {
             Log.d("WSConnection", "[*] Requested group name")
         } catch (e: Exception) {
             Log.e("WSConnection", "[*] Error requesting group name: ${e.message}")
+        }
+    }
+
+    /**
+     * Enviar movimiento de pala al servidor
+     */
+    fun sendPaddleMove(playerId: Int, position: Int) {
+        try {
+            val msgObject = JSONObject()
+            msgObject.put("type", "paddle_move")
+            msgObject.put("player_id", playerId)
+            msgObject.put("position", position)
+            send(msgObject.toString())
+            Log.d("WSConnection", "[*] Sent paddle move: Player $playerId at position $position")
+        } catch (e: Exception) {
+            Log.e("WSConnection", "[*] Error sending paddle move: ${e.message}")
         }
     }
 }
