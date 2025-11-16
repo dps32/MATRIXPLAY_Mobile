@@ -4,8 +4,8 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 
 class PongDisplay @JvmOverloads constructor(
@@ -34,28 +34,50 @@ class PongDisplay @JvmOverloads constructor(
         isAntiAlias = true
     }
 
+    // Paint para zona de gol (opcional)
+    private val goalZonePaint = Paint().apply {
+        color = Color.parseColor("#FF8000") // Rojo semi-transparente
+        alpha = 60
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+
     // Dimensiones de las palas
     private val paddleWidth = 20f
     private val paddleHeight = 150f
 
+    private val paddleMargin = 15f  // Aumentar de 10f a 15f
+
     // Dimensiones de la pelota
-    private val ballRadius = 20f
+    private val ballRadius = 15f
 
     // Posiciones de las palas (0-100)
     private var leftPaddlePosition = 50f
     private var rightPaddlePosition = 50f
 
-    // Posición de la pelota
-    private var ballX = 0f
-    private var ballY = 0f
+    // Posición de la pelota (porcentaje 0-100)
+    private var ballXPercent = 50f
+    private var ballYPercent = 50f
 
     // Estado del juego
     private var isGameRunning = false
+    private var viewInitialized = false
 
-    init {
-        // Inicializar posición de la pelota en el centro
-        ballX = width / 2f
-        ballY = height / 2f
+    // Callback para cuando la vista está lista
+    private var onViewReadyCallback: (() -> Unit)? = null
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+
+        if (w > 0 && h > 0 && !viewInitialized) {
+            viewInitialized = true
+            // Inicializar pelota en el centro
+            ballXPercent = 50f
+            ballYPercent = 50f
+
+            Log.d("PongDisplay", "[*] View initialized - Size: ${w}x${h}")
+            onViewReadyCallback?.invoke()
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -64,27 +86,35 @@ class PongDisplay @JvmOverloads constructor(
         // Fondo negro
         canvas.drawColor(Color.BLACK)
 
+        // Verificar que la vista tiene tamaño
+        if (width == 0 || height == 0) {
+            return
+        }
+
+        // --- BORDES ---
+        canvas.drawRect(0f, 0f, 10f, height.toFloat(), goalZonePaint)
+        canvas.drawRect(width - 10f, 0f, width.toFloat(), height.toFloat(), goalZonePaint)
+
         // Dibujar línea central punteada
         drawCenterLine(canvas)
 
-        // Dibujar pala izquierda
+        // Dibujar palas (left && right)
         drawLeftPaddle(canvas)
-
-        // Dibujar pala derecha
         drawRightPaddle(canvas)
 
-        // Dibujar pelota
+        // Dibujar pelota (estática en el centro)
         drawBall(canvas)
-
-        // Si el juego está corriendo, actualizar posición de la pelota
-        if (isGameRunning) {
-            invalidate() // Redibujar continuamente
-        }
     }
 
     /**
-     * Dibuja la línea central punteada
+     * Dibuja la pelota (estática en el centro)
      */
+    private fun drawBall(canvas: Canvas) {
+        val ballX = calculatePixelX(ballXPercent)
+        val ballY = calculatePixelY(ballYPercent)
+        canvas.drawCircle(ballX, ballY, ballRadius, ballPaint)
+    }
+
     private fun drawCenterLine(canvas: Canvas) {
         val centerX = width / 2f
         val dashHeight = 20f
@@ -127,22 +157,35 @@ class PongDisplay @JvmOverloads constructor(
         canvas.drawRect(left, top, right, bottom, paddlePaint)
     }
 
+
     /**
-     * Dibuja la pelota
+     * Convierte porcentaje X a píxeles
      */
-    private fun drawBall(canvas: Canvas) {
-        canvas.drawCircle(ballX, ballY, ballRadius, ballPaint)
+    private fun calculatePixelX(percent: Float): Float {
+        return (percent / 100f) * width
+    }
+
+    /**
+     * Convierte porcentaje Y a píxeles
+     */
+    private fun calculatePixelY(percent: Float): Float {
+        return (percent / 100f) * height
     }
 
     /**
      * Convierte la posición del SeekBar (0-100) a coordenadas Y
      */
     private fun calculatePaddleY(position: Float): Float {
-        // 0 = arriba, 100 = abajo
-        // Invertir para que 0 sea arriba
-        val normalizedPosition = 100f - position
-        return (normalizedPosition / 100f) * height
+        val minY = paddleHeight / 2 + paddleMargin
+        val maxY = height - (paddleHeight / 2) - paddleMargin
+
+        // Convertir 0–100 → posición dentro del canvas
+        val normalizedY = (position / 100f) * height
+
+        // Limitar rango
+        return normalizedY.coerceIn(minY, maxY)
     }
+
 
     /**
      * Actualiza la posición de la pala izquierda (0-100)
@@ -161,10 +204,11 @@ class PongDisplay @JvmOverloads constructor(
     }
 
     /**
-     * Inicia el juego (animación de la pelota)
+     * Inicia el juego
      */
     fun startGame() {
         isGameRunning = true
+        Log.d("PongDisplay", "[*] Game started - Ball static in center")
         invalidate()
     }
 
@@ -173,6 +217,7 @@ class PongDisplay @JvmOverloads constructor(
      */
     fun pauseGame() {
         isGameRunning = false
+        Log.d("PongDisplay", "[*] Game paused")
     }
 
     /**
@@ -181,6 +226,19 @@ class PongDisplay @JvmOverloads constructor(
     fun resetGame() {
         leftPaddlePosition = 50f
         rightPaddlePosition = 50f
+        ballXPercent = 50f
+        ballYPercent = 50f
+        Log.d("PongDisplay", "[*] Game reset")
         invalidate()
+    }
+
+    /**
+     * Establece un callback para cuando la vista esté lista
+     */
+    fun setOnViewReadyCallback(callback: () -> Unit) {
+        onViewReadyCallback = callback
+        if (viewInitialized) {
+            callback()
+        }
     }
 }

@@ -28,6 +28,9 @@ class PlayActivity : AppCompatActivity() {
     // ID del jugador (1 o 2)
     private var myPlayerId = 0
 
+    // Flag para evitar configurar el listener múltiples veces
+    private var isListenerConfigured = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -59,8 +62,11 @@ class PlayActivity : AppCompatActivity() {
             // Actualizar referencia de actividad actual
             MainActivity.currentActivityRef = this
 
-            // Configurar listener de WebSocket
-            setupWebSocketListener()
+            // Configurar listener de WebSocket solo una vez
+            if (!isListenerConfigured) {
+                setupWebSocketListener()
+                isListenerConfigured = true
+            }
 
             Log.d("PlayActivity", "[*] Game started!")
             Log.d("PlayActivity", "[*] Player: ${MainActivity.playerName}")
@@ -69,6 +75,7 @@ class PlayActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("PlayActivity", "[*] Error creating PlayActivity: ${e.message}")
             e.printStackTrace()
+            finish() // Cerrar activity si hay error crítico
         }
     }
 
@@ -93,6 +100,7 @@ class PlayActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("PlayActivity", "[*] Error initializing views: ${e.message}")
             e.printStackTrace()
+            throw e // Re-lanzar para que onCreate lo capture
         }
     }
 
@@ -104,11 +112,15 @@ class PlayActivity : AppCompatActivity() {
 
             paddleLeft.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    // Solo enviar si este jugador controla la pala izquierda
+                    // Actualizar visualmente siempre
+                    pongDisplay.setLeftPaddlePosition(progress)
+
+                    // Solo enviar al servidor si este jugador controla la pala izquierda
                     if (fromUser && myPlayerId == 1) {
-                        pongDisplay.setLeftPaddlePosition(progress)
                         sendPaddlePosition(1, progress)
-                        Log.d("PlayActivity", "[*] Left paddle position: $progress")
+                        Log.d("PlayActivity", "[*] Left paddle moved by player: $progress")
+                    } else if (!fromUser) {
+                        Log.d("PlayActivity", "[*] Left paddle updated from server: $progress")
                     }
                 }
 
@@ -122,11 +134,15 @@ class PlayActivity : AppCompatActivity() {
 
             paddleRight.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    // Solo enviar si este jugador controla la pala derecha
+                    // Actualizar visualmente siempre
+                    pongDisplay.setRightPaddlePosition(progress)
+
+                    // Solo enviar al servidor si este jugador controla la pala derecha
                     if (fromUser && myPlayerId == 2) {
-                        pongDisplay.setRightPaddlePosition(progress)
                         sendPaddlePosition(2, progress)
-                        Log.d("PlayActivity", "[*] Right paddle position: $progress")
+                        Log.d("PlayActivity", "[*] Right paddle moved by player: $progress")
+                    } else if (!fromUser) {
+                        Log.d("PlayActivity", "[*] Right paddle updated from server: $progress")
                     }
                 }
 
@@ -138,6 +154,7 @@ class PlayActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("PlayActivity", "[*] Error setting up controls: ${e.message}")
             e.printStackTrace()
+            throw e
         }
     }
 
@@ -145,24 +162,30 @@ class PlayActivity : AppCompatActivity() {
      * Configurar el listener de WebSocket para recibir mensajes
      */
     private fun setupWebSocketListener() {
-        MainActivity.wsClient.wsListener = object : WSClient.WSListener {
-            override fun onConnectionEstablished() {
-                Log.d("PlayActivity", "[*] Connection confirmed in game")
-            }
+        try {
+            MainActivity.wsClient.wsListener = object : WSClient.WSListener {
+                override fun onConnectionEstablished() {
+                    Log.d("PlayActivity", "[*] Connection confirmed in game")
+                }
 
-            override fun onTwoPlayersReady() {
-                // Ya estamos jugando
-            }
+                override fun onTwoPlayersReady() {
+                    Log.d("PlayActivity", "[*] Two players ready notification received")
+                }
 
-            override fun onCountdownStart(startNumber: Int) {
-                // Ya estamos jugando
-            }
+                override fun onCountdownStart(startNumber: Int) {
+                    Log.d("PlayActivity", "[*] Countdown start notification received: $startNumber")
+                }
 
-            override fun onMessageReceived(message: String) {
-                runOnUiThread {
-                    handleWebSocketMessage(message)
+                override fun onMessageReceived(message: String) {
+                    runOnUiThread {
+                        handleWebSocketMessage(message)
+                    }
                 }
             }
+            Log.d("PlayActivity", "[*] WebSocket listener configured")
+        } catch (e: Exception) {
+            Log.e("PlayActivity", "[*] Error configuring WebSocket listener: ${e.message}")
+            e.printStackTrace()
         }
     }
 
@@ -180,9 +203,7 @@ class PlayActivity : AppCompatActivity() {
                     myPlayerId = json.optInt("player_id", 0)
                     Log.d("PlayActivity", "[*] Assigned as Player $myPlayerId")
 
-                    runOnUiThread {
-                        configurePlayerControls()
-                    }
+                    configurePlayerControls()
                 }
 
                 "paddle_update" -> {
@@ -192,13 +213,12 @@ class PlayActivity : AppCompatActivity() {
 
                     Log.d("PlayActivity", "[*] Received paddle update - Player: $playerId, Position: $position")
 
-                    runOnUiThread {
-                        updatePaddleFromServer(playerId, position)
-                    }
+                    updatePaddleFromServer(playerId, position)
                 }
             }
         } catch (e: Exception) {
             Log.e("PlayActivity", "[*] Error handling WebSocket message: ${e.message}")
+            e.printStackTrace()
         }
     }
 
@@ -238,14 +258,18 @@ class PlayActivity : AppCompatActivity() {
     private fun updatePaddleFromServer(playerId: Int, position: Int) {
         when (playerId) {
             1 -> {
-                // Actualizar pala izquierda
-                paddleLeft.progress = position
-                pongDisplay.setLeftPaddlePosition(position)
+                // Solo actualizar si NO soy el jugador 1 (evitar loop)
+                if (myPlayerId != 1) {
+                    paddleLeft.progress = position
+                    Log.d("PlayActivity", "[*] Updated left paddle from server: $position")
+                }
             }
             2 -> {
-                // Actualizar pala derecha
-                paddleRight.progress = position
-                pongDisplay.setRightPaddlePosition(position)
+                // Solo actualizar si NO soy el jugador 2 (evitar loop)
+                if (myPlayerId != 2) {
+                    paddleRight.progress = position
+                    Log.d("PlayActivity", "[*] Updated right paddle from server: $position")
+                }
             }
         }
     }
@@ -264,39 +288,26 @@ class PlayActivity : AppCompatActivity() {
 
                 MainActivity.wsClient.send(message.toString())
                 Log.d("PlayActivity", "[*] Sent paddle position: Player $playerId = $position")
+            } else {
+                Log.w("PlayActivity", "[*] Cannot send paddle position - not connected to server")
             }
         } catch (e: Exception) {
             Log.e("PlayActivity", "[*] Error sending paddle position: ${e.message}")
+            e.printStackTrace()
         }
-    }
-
-    /**
-     * Actualizar puntuación del jugador 1
-     */
-    private fun updateScore1(newScore: Int) {
-        score1 = newScore
-        runOnUiThread {
-            scorePlayer1.text = score1.toString()
-        }
-        Log.d("PlayActivity", "[*] Score 1 updated: $score1")
-    }
-
-    /**
-     * Actualizar puntuación del jugador 2
-     */
-    private fun updateScore2(newScore: Int) {
-        score2 = newScore
-        runOnUiThread {
-            scorePlayer2.text = score2.toString()
-        }
-        Log.d("PlayActivity", "[*] Score 2 updated: $score2")
     }
 
     override fun onResume() {
         super.onResume()
         MainActivity.currentActivityRef = this
         pongDisplay.startGame()
-        setupWebSocketListener()
+
+        // Solo configurar listener si no está configurado
+        if (!isListenerConfigured) {
+            setupWebSocketListener()
+            isListenerConfigured = true
+        }
+
         Log.d("PlayActivity", "[*] PlayActivity resumed")
     }
 
@@ -309,10 +320,14 @@ class PlayActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         pongDisplay.pauseGame()
-        Log.d("PlayActivity", "[*] PlayActivity destroyed")
 
+        // Limpiar listener
         if (MainActivity.currentActivityRef == this) {
             MainActivity.currentActivityRef = null
         }
+
+        isListenerConfigured = false
+
+        Log.d("PlayActivity", "[*] PlayActivity destroyed")
     }
 }
