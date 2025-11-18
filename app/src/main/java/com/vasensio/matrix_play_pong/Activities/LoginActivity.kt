@@ -20,7 +20,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var btnConnect: Button
     private lateinit var btnAvatar: Button
     private lateinit var playerNameInput: TextInputEditText
-    private lateinit var urlInput: TextInputEditText
+    private lateinit var urlInput: TextInputEditText;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

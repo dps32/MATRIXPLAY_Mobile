@@ -28,12 +28,23 @@ class CountdownActivity : AppCompatActivity() {
             textPlayer1 = findViewById(R.id.textPlayer1)
             textPlayer2 = findViewById(R.id.textPlayer2)
 
-            // Asignar nombres
-            textPlayer1.text = MainActivity.playerName
-            textPlayer2.text = if (MainActivity.opponentName.isNotEmpty()) {
-                MainActivity.opponentName
+            // Asignar nombres según playerId
+            if (MainActivity.myPlayerId == 1) {
+                // Soy Player 1: mi nombre a la izquierda, oponente a la derecha
+                textPlayer1.text = MainActivity.playerName
+                textPlayer2.text = MainActivity.opponentName
+            } else if (MainActivity.myPlayerId == 2) {
+                // Soy Player 2: oponente a la izquierda, mi nombre a la derecha
+                textPlayer1.text = MainActivity.opponentName
+                textPlayer2.text = MainActivity.playerName
             } else {
-                "PLAYER 2"
+                // No se ha asignado playerId aún, usar valores por defecto
+                textPlayer1.text = MainActivity.playerName
+                textPlayer2.text = if (MainActivity.opponentName.isNotEmpty()) {
+                    MainActivity.opponentName
+                } else {
+                    "PLAYER 2"
+                }
             }
 
             // Mostrar "READY" mientras esperamos el countdown
@@ -85,40 +96,14 @@ class CountdownActivity : AppCompatActivity() {
                 }
             }
 
+            override fun onGameStateUpdate(gameState: JSONObject) {
+                // CountdownActivity no maneja estados de juego
+            }
+
             override fun onMessageReceived(message: String) {
-                // Procesar mensajes adicionales si es necesario
-                try {
-                    val json = JSONObject(message)
-                    val type = json.optString("type", "")
-
-                    Log.d("CountdownActivity", "[*] Message received - Type: $type")
-
-                    when (type) {
-                        "player_info" -> {
-                            val player1 = json.optString("player1", "")
-                            val player2 = json.optString("player2", "")
-
-                            if (player1.isNotEmpty()) {
-                                MainActivity.playerName = player1
-                            }
-                            if (player2.isNotEmpty()) {
-                                MainActivity.opponentName = player2
-                            }
-
-                            runOnUiThread {
-                                textPlayer1.text = MainActivity.playerName
-                                textPlayer2.text = MainActivity.opponentName
-                            }
-                        }
-
-                        "error" -> {
-                            val errorMsg = json.optString("message", "Unknown error")
-                            Log.e("CountdownActivity", "[*] Server error: $errorMsg")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("CountdownActivity", "[*] Error parsing message: ${e.message}")
-                }
+                // CountdownActivity puede ignorar mensajes generales
+                // o procesar algunos específicos si es necesario
+                Log.d("CountdownActivity", "[*] Message received: $message")
             }
         }
     }

@@ -17,7 +17,10 @@ class MainActivity : AppCompatActivity() {
         var playerName: String = ""
 
         // Nombre del oponente
-        var opponentName: String = "PLAYER 2"
+        var opponentName: String = ""
+
+        // ID del jugador (1 o 2, 0 = no asignado)
+        var myPlayerId: Int = 0
 
         // Referencia a la actividad actual
         var currentActivityRef: Activity? = null

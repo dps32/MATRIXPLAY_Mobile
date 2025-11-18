@@ -28,8 +28,9 @@ class WaitActivity : AppCompatActivity() {
                 insets
             }
 
+            // Inicializar el TextView (usar el existente textView4)
             textViewStatus = findViewById(R.id.textView4)
-            textViewStatus.text = "WAITING FOR PLAYERS..."
+            textViewStatus.text = "CONNECTING..."
 
             // Actualizar referencia de actividad actual
             MainActivity.currentActivityRef = this
@@ -37,19 +38,7 @@ class WaitActivity : AppCompatActivity() {
             // Registrar listener en WSClient
             setupWebSocketListener()
 
-            // Opcional: Solicitar info del servidor
-            try {
-                if (MainActivity.isConnectedToServer()) {
-                    MainActivity.wsClient.requestGroupName()
-                }
-            } catch (e: Exception) {
-                Log.e("WaitActivity", "[*] Error requesting group name: ${e.message}")
-            }
-
-            Log.d("WaitActivity", "[*] WaitActivity created successfully")
-
         } catch (e: Exception) {
-            Log.e("WaitActivity", "[*] Error creating WaitActivity: ${e.message}")
             e.printStackTrace()
             finish()
         }
@@ -59,6 +48,8 @@ class WaitActivity : AppCompatActivity() {
      * Configurar el listener de WebSocket
      */
     private fun setupWebSocketListener() {
+        Log.d("WaitActivity", "[*] Setting up WebSocket listener")
+        
         MainActivity.wsClient.wsListener = object : WSClient.WSListener {
             override fun onConnectionEstablished() {
                 Log.d("WaitActivity", "[*] Connection established")
@@ -68,6 +59,8 @@ class WaitActivity : AppCompatActivity() {
             }
 
             override fun onTwoPlayersReady() {
+                Log.d("WaitActivity", "[*] onTwoPlayersReady called! hasNavigated=$hasNavigated")
+                
                 // Solo navegamos una vez
                 if (!hasNavigated) {
                     hasNavigated = true
@@ -81,6 +74,8 @@ class WaitActivity : AppCompatActivity() {
                             navigateToCountdown()
                         }, 500)
                     }
+                } else {
+                    Log.w("WaitActivity", "[*] Already navigated, ignoring duplicate onTwoPlayersReady")
                 }
             }
 
@@ -92,10 +87,17 @@ class WaitActivity : AppCompatActivity() {
                 // Si recibimos countdown y no hemos navegado, hacerlo ahora
                 if (!hasNavigated) {
                     hasNavigated = true
+                    Log.d("WaitActivity", "[*] Countdown received, navigating now")
                     runOnUiThread {
                         navigateToCountdown()
                     }
+                } else {
+                    Log.w("WaitActivity", "[*] Already navigated, ignoring countdown signal")
                 }
+            }
+
+            override fun onGameStateUpdate(gameState: JSONObject) {
+                // WaitActivity no maneja estados de juego
             }
 
             override fun onMessageReceived(message: String) {
@@ -107,6 +109,13 @@ class WaitActivity : AppCompatActivity() {
                     Log.d("WaitActivity", "[*] Message received - Type: $type")
 
                     when (type) {
+                        "playerAssigned" -> {
+                            val playerId = json.optInt("playerId", 0)
+                            runOnUiThread {
+                                textViewStatus.text = "YOU ARE PLAYER $playerId"
+                            }
+                        }
+                        
                         "player_joined" -> {
                             val playerName = json.optString("player_name", "Unknown")
                             runOnUiThread {
@@ -132,6 +141,19 @@ class WaitActivity : AppCompatActivity() {
                 } catch (e: Exception) {
                     Log.e("WaitActivity", "[*] Error parsing message: ${e.message}")
                 }
+            }
+        }
+        
+        Log.d("WaitActivity", "[*] WebSocket listener configured successfully")
+        
+        // IMPORTANTE: Verificar si el countdown ya fue recibido ANTES de configurar el listener
+        val savedNumber = MainActivity.wsClient.getSavedCountdownNumber()
+        if (savedNumber != null && !hasNavigated) {
+            Log.d("WaitActivity", "[*] Countdown was already received before listener setup! Navigating now...")
+            hasNavigated = true
+            runOnUiThread {
+                textViewStatus.text = "JOINING GAME..."
+                navigateToCountdown()
             }
         }
     }

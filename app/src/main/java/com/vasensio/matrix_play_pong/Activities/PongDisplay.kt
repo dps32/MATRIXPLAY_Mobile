@@ -36,7 +36,7 @@ class PongDisplay @JvmOverloads constructor(
 
     // Paint para zona de gol (opcional)
     private val goalZonePaint = Paint().apply {
-        color = Color.parseColor("#FF8000") // Rojo semi-transparente
+        color = Color.parseColor("#FF8000")
         alpha = 60
         style = Paint.Style.FILL
         isAntiAlias = true
@@ -45,8 +45,7 @@ class PongDisplay @JvmOverloads constructor(
     // Dimensiones de las palas
     private val paddleWidth = 20f
     private val paddleHeight = 150f
-
-    private val paddleMargin = 15f  // Aumentar de 10f a 15f
+    private val paddleMargin = 15f
 
     // Dimensiones de la pelota
     private val ballRadius = 15f
@@ -75,7 +74,6 @@ class PongDisplay @JvmOverloads constructor(
             ballXPercent = 50f
             ballYPercent = 50f
 
-            Log.d("PongDisplay", "[*] View initialized - Size: ${w}x${h}")
             onViewReadyCallback?.invoke()
         }
     }
@@ -102,12 +100,12 @@ class PongDisplay @JvmOverloads constructor(
         drawLeftPaddle(canvas)
         drawRightPaddle(canvas)
 
-        // Dibujar pelota (estática en el centro)
+        // Dibujar pelota
         drawBall(canvas)
     }
 
     /**
-     * Dibuja la pelota (estática en el centro)
+     * Dibuja la pelota
      */
     private fun drawBall(canvas: Canvas) {
         val ballX = calculatePixelX(ballXPercent)
@@ -157,7 +155,6 @@ class PongDisplay @JvmOverloads constructor(
         canvas.drawRect(left, top, right, bottom, paddlePaint)
     }
 
-
     /**
      * Convierte porcentaje X a píxeles
      */
@@ -186,7 +183,6 @@ class PongDisplay @JvmOverloads constructor(
         return normalizedY.coerceIn(minY, maxY)
     }
 
-
     /**
      * Actualiza la posición de la pala izquierda (0-100)
      */
@@ -204,11 +200,20 @@ class PongDisplay @JvmOverloads constructor(
     }
 
     /**
+     * Actualiza la posición de la pelota (0-100 para ambos ejes)
+     */
+    fun setBallPosition(xPercent: Float, yPercent: Float) {
+        ballXPercent = xPercent.coerceIn(0f, 100f)
+        ballYPercent = yPercent.coerceIn(0f, 100f)
+        invalidate()
+    }
+
+    /**
      * Inicia el juego
      */
     fun startGame() {
         isGameRunning = true
-        Log.d("PongDisplay", "[*] Game started - Ball static in center")
+        Log.d("PongDisplay", "[*] Game started")
         invalidate()
     }
 
