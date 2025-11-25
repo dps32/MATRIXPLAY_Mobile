@@ -2,6 +2,8 @@ package com.vasensio.matrix_play_pong.Activities
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -15,6 +17,8 @@ class WaitActivity : AppCompatActivity() {
 
     private lateinit var textViewStatus: TextView
     private var hasNavigated = false
+    private val connectionCheckHandler = Handler(Looper.getMainLooper())
+    private var connectionCheckRunnable: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,9 +42,65 @@ class WaitActivity : AppCompatActivity() {
             // Registrar listener en WSClient
             setupWebSocketListener()
 
+            // Iniciar verificación periódica de conexión
+            startConnectionCheck()
+
         } catch (e: Exception) {
             e.printStackTrace()
             finish()
+        }
+    }
+
+    /**
+     * Verificar periódicamente el estado de la conexión
+     */
+    private fun startConnectionCheck() {
+        connectionCheckRunnable = object : Runnable {
+            override fun run() {
+                if (!hasNavigated && !MainActivity.isConnectedToServer()) {
+                    Log.e("WaitActivity", "[*] Connection lost detected!")
+                    handleConnectionLost()
+                } else if (!hasNavigated) {
+                    // Seguir verificando cada 2 segundos
+                    connectionCheckHandler.postDelayed(this, 2000)
+                }
+            }
+        }
+
+        // Iniciar la primera verificación después de 2 segundos
+        connectionCheckHandler.postDelayed(connectionCheckRunnable!!, 2000)
+    }
+
+    /**
+     * Detener la verificación de conexión
+     */
+    private fun stopConnectionCheck() {
+        connectionCheckRunnable?.let {
+            connectionCheckHandler.removeCallbacks(it)
+        }
+    }
+
+    /**
+     * Manejar pérdida de conexión
+     */
+    private fun handleConnectionLost() {
+        if (!hasNavigated) {
+            hasNavigated = true
+            Log.e("WaitActivity", "[*] Handling connection lost - returning to LoginActivity")
+
+            runOnUiThread {
+                textViewStatus.text = "CONNECTION LOST"
+
+                // Desconectar el WebSocket
+                MainActivity.disconnectWS()
+
+                // Volver a LoginActivity con flag de connection_lost
+                val intent = Intent(this@WaitActivity, LoginActivity::class.java)
+                intent.putExtra("connection_lost", true)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                startActivity(intent)
+                finish()
+            }
         }
     }
 
@@ -49,7 +109,7 @@ class WaitActivity : AppCompatActivity() {
      */
     private fun setupWebSocketListener() {
         Log.d("WaitActivity", "[*] Setting up WebSocket listener")
-        
+
         MainActivity.wsClient.wsListener = object : WSClient.WSListener {
             override fun onConnectionEstablished() {
                 Log.d("WaitActivity", "[*] Connection established")
@@ -60,10 +120,11 @@ class WaitActivity : AppCompatActivity() {
 
             override fun onTwoPlayersReady() {
                 Log.d("WaitActivity", "[*] onTwoPlayersReady called! hasNavigated=$hasNavigated")
-                
+
                 // Solo navegamos una vez
                 if (!hasNavigated) {
                     hasNavigated = true
+                    stopConnectionCheck() // Detener verificación de conexión
                     Log.d("WaitActivity", "[*] Two players ready, moving to CountdownActivity")
 
                     runOnUiThread {
@@ -87,6 +148,7 @@ class WaitActivity : AppCompatActivity() {
                 // Si recibimos countdown y no hemos navegado, hacerlo ahora
                 if (!hasNavigated) {
                     hasNavigated = true
+                    stopConnectionCheck() // Detener verificación de conexión
                     Log.d("WaitActivity", "[*] Countdown received, navigating now")
                     runOnUiThread {
                         navigateToCountdown()
@@ -115,7 +177,7 @@ class WaitActivity : AppCompatActivity() {
                                 textViewStatus.text = "YOU ARE PLAYER $playerId"
                             }
                         }
-                        
+
                         "player_joined" -> {
                             val playerName = json.optString("player_name", "Unknown")
                             runOnUiThread {
@@ -136,6 +198,17 @@ class WaitActivity : AppCompatActivity() {
                             runOnUiThread {
                                 textViewStatus.text = "ERROR: $errorMsg"
                             }
+
+                            // Si es un error crítico, volver a login
+                            if (errorMsg.contains("disconnect", ignoreCase = true) ||
+                                errorMsg.contains("connection", ignoreCase = true)) {
+                                handleConnectionLost()
+                            }
+                        }
+
+                        "disconnect" -> {
+                            Log.e("WaitActivity", "[*] Server sent disconnect message")
+                            handleConnectionLost()
                         }
                     }
                 } catch (e: Exception) {
@@ -143,14 +216,15 @@ class WaitActivity : AppCompatActivity() {
                 }
             }
         }
-        
+
         Log.d("WaitActivity", "[*] WebSocket listener configured successfully")
-        
+
         // IMPORTANTE: Verificar si el countdown ya fue recibido ANTES de configurar el listener
         val savedNumber = MainActivity.wsClient.getSavedCountdownNumber()
         if (savedNumber != null && !hasNavigated) {
             Log.d("WaitActivity", "[*] Countdown was already received before listener setup! Navigating now...")
             hasNavigated = true
+            stopConnectionCheck() // Detener verificación de conexión
             runOnUiThread {
                 textViewStatus.text = "JOINING GAME..."
                 navigateToCountdown()
@@ -177,10 +251,10 @@ class WaitActivity : AppCompatActivity() {
         super.onResume()
         MainActivity.currentActivityRef = this
 
-        // Verificar conexión
+        // Verificar conexión inmediatamente
         if (!MainActivity.isConnectedToServer()) {
             Log.w("WaitActivity", "[*] Not connected to server in onResume")
-            textViewStatus.text = "CONNECTION LOST"
+            handleConnectionLost()
         }
 
         Log.d("WaitActivity", "[*] WaitActivity resumed")
@@ -193,6 +267,9 @@ class WaitActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+
+        // Detener verificación de conexión
+        stopConnectionCheck()
 
         // Limpiar listener si la actividad se destruye
         if (MainActivity.currentActivityRef == this) {

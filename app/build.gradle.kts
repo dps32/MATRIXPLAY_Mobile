@@ -48,4 +48,5 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     implementation("com.airbnb.android:lottie:6.7.1")
     implementation(libs.websocket)
+    implementation("com.github.bumptech.glide:glide:4.16.0")
 }

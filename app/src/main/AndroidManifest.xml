@@ -49,6 +49,11 @@
             android:name=".Activities.PlayActivity"
             android:screenOrientation="landscape"
             android:exported="false"/>
+
+        <!-- Final Result Activity -->
+        <activity android:name=".Activities.FinalResultActivity"
+            android:screenOrientation="landscape"
+            android:exported="false" />
     </application>
 
 </manifest>

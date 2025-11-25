@@ -127,21 +127,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tableLayout" />
 
-    <Button
-        android:id="@+id/button2"
-        android:layout_width="97dp"
-        android:layout_height="133dp"
-        android:background="#FFB347"
-        android:fontFamily="@font/pixelify_sans"
-        android:padding="8dp"
-        android:text="AVATAR"
-        android:textColorLink="#D36135"
-        android:textSize="20dp"
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="104dp"
+        android:layout_height="142dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/tableLayout"
-        app:layout_constraintHorizontal_bias="0.72"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.496" />
+        app:srcCompat="@drawable/ic_launcher_background" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
